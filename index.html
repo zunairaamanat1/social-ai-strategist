@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Social AI Strategist</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 80px;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      white-space: pre-wrap;
+      min-height: 40px;
+    }
+    #loading {
+      color: #888;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📱 Social AI Strategist</h1>
+  <p>Describe your business and get an AI-generated Instagram caption:</p>
+
+  <textarea id="businessInput" placeholder="e.g. A small home bakery in Lahore that sells custom birthday cakes"></textarea>
+  <br>
+  <button onclick="generateCaption()">Generate Caption</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function generateCaption() {
+      const input = document.getElementById('businessInput').value;
+      const resultDiv = document.getElementById('result');
+
+      if (!input.trim()) {
+        resultDiv.innerText = 'Please describe your business first.';
+        return;
+      }
+
+      resultDiv.innerHTML = '<span id="loading">Generating caption...</span>';
+
+      try {
+        const response = await fetch('http://localhost:3000/generate-caption', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessDescription: input })
+        });
+
+        const data = await response.json();
+
+        if (data.caption) {
+          resultDiv.innerText = data.caption;
+        } else {
+          resultDiv.innerText = 'Error: ' + (data.error || 'Something went wrong.');
+        }
+      } catch (error) {
+        resultDiv.innerText = 'Error connecting to server. Is your backend running?';
+      }
+    }
+  </script>
+
+</body>
+</html>
