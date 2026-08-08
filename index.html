@@ -11,9 +11,7 @@
       padding: 20px;
       background: #f5f5f5;
     }
-    h1 {
-      color: #333;
-    }
+    h1 { color: #333; }
     h2 {
       color: #333;
       margin-top: 40px;
@@ -21,15 +19,16 @@
       border-bottom: 2px solid #ddd;
       padding-bottom: 8px;
     }
-    textarea {
+    input, textarea {
       width: 100%;
-      height: 80px;
       padding: 10px;
       font-size: 14px;
       border-radius: 8px;
       border: 1px solid #ccc;
       box-sizing: border-box;
+      margin-top: 6px;
     }
+    textarea { height: 80px; }
     button {
       margin-top: 10px;
       padding: 10px 20px;
@@ -40,9 +39,11 @@
       cursor: pointer;
       font-size: 14px;
     }
-    button:hover {
-      background: #45a049;
+    button:hover { background: #45a049; }
+    button.secondary {
+      background: #888;
     }
+    button.secondary:hover { background: #666; }
     #result {
       margin-top: 20px;
       padding: 15px;
@@ -52,10 +53,7 @@
       white-space: pre-wrap;
       min-height: 40px;
     }
-    #loading {
-      color: #888;
-      font-style: italic;
-    }
+    #loading { color: #888; font-style: italic; }
     .post-card {
       background: white;
       border: 1px solid #ddd;
@@ -68,27 +66,151 @@
       color: #888;
       margin-bottom: 6px;
     }
-    .post-card .caption {
-      white-space: pre-wrap;
+    .post-card .caption { white-space: pre-wrap; }
+
+    #authBox {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    #appBox { display: none; }
+    #userBar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #555;
+    }
+    .error-msg {
+      color: #c0392b;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .toggle-link {
+      font-size: 13px;
+      color: #4CAF50;
+      cursor: pointer;
+      margin-top: 12px;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
 
   <h1>📱 Social AI Strategist</h1>
-  <p>Describe your business and get an AI-generated Instagram caption:</p>
 
-  <textarea id="businessInput" placeholder="e.g. A small home bakery in Lahore that sells custom birthday cakes"></textarea>
-  <br>
-  <button onclick="generateCaption()">Generate Caption</button>
+  <!-- AUTH BOX (shown when logged out) -->
+  <div id="authBox">
+    <h2 id="authTitle">Log In</h2>
+    <input type="email" id="authEmail" placeholder="Email">
+    <input type="password" id="authPassword" placeholder="Password">
+    <button onclick="handleAuth()" id="authButton">Log In</button>
+    <div class="error-msg" id="authError"></div>
+    <div class="toggle-link" onclick="toggleAuthMode()" id="authToggle">Don't have an account? Sign up</div>
+  </div>
 
-  <div id="result"></div>
+  <!-- APP BOX (shown when logged in) -->
+  <div id="appBox">
+    <div id="userBar">
+      <span id="userEmail"></span>
+      <button class="secondary" onclick="logOut()">Log Out</button>
+    </div>
 
-  <h2>📜 History</h2>
-  <div id="history">Loading past posts...</div>
+    <p>Describe your business and get an AI-generated Instagram caption:</p>
+    <textarea id="businessInput" placeholder="e.g. A small home bakery in Lahore that sells custom birthday cakes"></textarea>
+    <br>
+    <button onclick="generateCaption()">Generate Caption</button>
+
+    <div id="result"></div>
+
+    <h2>📜 History</h2>
+    <div id="history">Loading past posts...</div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+      signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD34XJdWLFD9djMMTY-UAXqGVNrNt3wWoE",
+      authDomain: "social-ai-strategist.firebaseapp.com",
+      projectId: "social-ai-strategist",
+      storageBucket: "social-ai-strategist.firebasestorage.app",
+      messagingSenderId: "392812797778",
+      appId: "1:392812797778:web:e8a3e32518aba403a7a48b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    let isSignupMode = false;
+    let currentUser = null;
+
+    window.toggleAuthMode = function () {
+      isSignupMode = !isSignupMode;
+      document.getElementById('authTitle').innerText = isSignupMode ? 'Sign Up' : 'Log In';
+      document.getElementById('authButton').innerText = isSignupMode ? 'Sign Up' : 'Log In';
+      document.getElementById('authToggle').innerText = isSignupMode
+        ? 'Already have an account? Log in'
+        : "Don't have an account? Sign up";
+      document.getElementById('authError').innerText = '';
+    };
+
+    window.handleAuth = async function () {
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const errorDiv = document.getElementById('authError');
+      errorDiv.innerText = '';
+
+      if (!email || !password) {
+        errorDiv.innerText = 'Please enter both email and password.';
+        return;
+      }
+
+      try {
+        if (isSignupMode) {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (error) {
+        errorDiv.innerText = error.message;
+      }
+    };
+
+    window.logOut = function () {
+      signOut(auth);
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (user) {
+        document.getElementById('authBox').style.display = 'none';
+        document.getElementById('appBox').style.display = 'block';
+        document.getElementById('userEmail').innerText = user.email;
+        window.loadHistory();
+      } else {
+        document.getElementById('authBox').style.display = 'block';
+        document.getElementById('appBox').style.display = 'none';
+      }
+    });
+
+    window.getCurrentUser = function () {
+      return currentUser;
+    };
+  </script>
 
   <script>
     async function generateCaption() {
+      const user = getCurrentUser();
+      if (!user) return;
+
       const input = document.getElementById('businessInput').value;
       const resultDiv = document.getElementById('result');
 
@@ -100,9 +222,13 @@
       resultDiv.innerHTML = '<span id="loading">Generating caption...</span>';
 
       try {
+        const idToken = await user.getIdToken();
         const response = await fetch('http://localhost:3000/generate-caption', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
           body: JSON.stringify({ businessDescription: input })
         });
 
@@ -110,7 +236,7 @@
 
         if (data.caption) {
           resultDiv.innerText = data.caption;
-          loadHistory(); // refresh history after generating
+          loadHistory();
         } else {
           resultDiv.innerText = 'Error: ' + (data.error || 'Something went wrong.');
         }
@@ -120,9 +246,15 @@
     }
 
     async function loadHistory() {
+      const user = getCurrentUser();
+      if (!user) return;
+
       const historyDiv = document.getElementById('history');
       try {
-        const response = await fetch('http://localhost:3000/posts');
+        const idToken = await user.getIdToken();
+        const response = await fetch('http://localhost:3000/posts', {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        });
         const data = await response.json();
 
         if (!data.posts || data.posts.length === 0) {
@@ -141,8 +273,7 @@
       }
     }
 
-    // Load history as soon as the page opens
-    loadHistory();
+    window.loadHistory = loadHistory;
   </script>
 
 </body>
