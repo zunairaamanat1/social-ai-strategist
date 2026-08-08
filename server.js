@@ -105,6 +105,66 @@ app.get('/posts', verifyUser, async (req, res) => {
   }
 });
 
+// Analyze sentiment of comments for a specific post
+app.post('/analyze-sentiment', verifyUser, async (req, res) => {
+  try {
+    const { postId, comments } = req.body;
+
+    if (!postId || !comments || !Array.isArray(comments) || comments.length === 0) {
+      return res.status(400).json({ error: 'postId and a non-empty comments array are required' });
+    }
+
+    const commentsList = comments.map((c, i) => `${i + 1}. ${c}`).join('\n');
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a social media sentiment analyst. Given a list of comments, respond ONLY with valid JSON in this exact format, no other text:
+{
+  "positive": <count>,
+  "neutral": <count>,
+  "negative": <count>,
+  "summary": "<one sentence summary of overall audience reaction>",
+  "suggestion": "<one sentence suggestion for improving future content based on this feedback>"
+}`
+          },
+          {
+            role: 'user',
+            content: commentsList
+          }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    let sentimentResult;
+
+    try {
+      sentimentResult = JSON.parse(data.choices[0].message.content);
+    } catch (parseError) {
+      return res.status(500).json({ error: 'Could not parse sentiment analysis result' });
+    }
+
+    // Save sentiment result onto the post document
+    await db.collection('posts').doc(postId).update({
+      sentiment: sentimentResult,
+      analyzedCommentsCount: comments.length
+    });
+
+    res.json({ sentiment: sentimentResult });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong analyzing sentiment' });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });

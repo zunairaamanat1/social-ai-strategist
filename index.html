@@ -95,6 +95,27 @@
       margin-top: 12px;
       display: inline-block;
     }
+    .small-btn {
+      font-size: 12px;
+      padding: 6px 12px;
+      margin-top: 10px;
+    }
+    .comment-box {
+      margin-top: 10px;
+    }
+    .comment-box textarea {
+      height: 60px;
+    }
+    .sentiment-result {
+      margin-top: 12px;
+      padding: 10px;
+      background: #f0f8f0;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .suggestion {
+      color: #555;
+    }
   </style>
 </head>
 <body>
@@ -266,10 +287,69 @@
           <div class="post-card">
             <div class="business">${post.businessDescription}</div>
             <div class="caption">${post.caption}</div>
+            ${post.sentiment ? `
+              <div class="sentiment-result">
+                <strong>Sentiment:</strong> 👍 ${post.sentiment.positive} · 😐 ${post.sentiment.neutral} · 👎 ${post.sentiment.negative}<br>
+                <em>${post.sentiment.summary}</em><br>
+                <span class="suggestion">💡 ${post.sentiment.suggestion}</span>
+              </div>
+            ` : `
+              <button class="secondary small-btn" onclick="toggleCommentBox('${post.id}')">Analyze Sentiment</button>
+              <div class="comment-box" id="commentBox-${post.id}" style="display:none;">
+                <textarea id="commentInput-${post.id}" placeholder="Paste sample comments here, one per line"></textarea>
+                <button onclick="analyzeSentiment('${post.id}')">Run Analysis</button>
+                <div id="sentimentStatus-${post.id}"></div>
+              </div>
+            `}
           </div>
         `).join('');
       } catch (error) {
         historyDiv.innerHTML = '<p>Could not load history. Is your backend running?</p>';
+      }
+    }
+
+    function toggleCommentBox(postId) {
+      const box = document.getElementById(`commentBox-${postId}`);
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function analyzeSentiment(postId) {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      const textarea = document.getElementById(`commentInput-${postId}`);
+      const statusDiv = document.getElementById(`sentimentStatus-${postId}`);
+      const rawComments = textarea.value.trim();
+
+      if (!rawComments) {
+        statusDiv.innerText = 'Please paste at least one comment.';
+        return;
+      }
+
+      const comments = rawComments.split('\n').map(c => c.trim()).filter(c => c.length > 0);
+
+      statusDiv.innerText = 'Analyzing...';
+
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('http://localhost:3000/analyze-sentiment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ postId, comments })
+        });
+
+        const data = await response.json();
+
+        if (data.sentiment) {
+          loadHistory(); // refresh to show the result
+        } else {
+          statusDiv.innerText = 'Error: ' + (data.error || 'Something went wrong.');
+        }
+      } catch (error) {
+        statusDiv.innerText = 'Error connecting to server.';
       }
     }
 
