@@ -116,6 +116,25 @@
     .suggestion {
       color: #555;
     }
+    .schedule-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .schedule-row input {
+      margin-top: 0;
+      flex: 1;
+    }
+    .calendar-card {
+      border-left: 4px solid #4CAF50;
+    }
+    .scheduled-date {
+      font-weight: bold;
+      color: #4CAF50;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -145,6 +164,8 @@
     <button onclick="generateCaption()">Generate Caption</button>
 
     <div id="result"></div>
+<h2>📅 Content Calendar</h2>
+    <div id="calendar">Loading scheduled posts...</div>
 
     <h2>📜 History</h2>
     <div id="history">Loading past posts...</div>
@@ -266,6 +287,8 @@
       }
     }
 
+   let allPosts = [];
+
     async function loadHistory() {
       const user = getCurrentUser();
       if (!user) return;
@@ -278,33 +301,109 @@
         });
         const data = await response.json();
 
-        if (!data.posts || data.posts.length === 0) {
-          historyDiv.innerHTML = '<p>No posts yet — generate your first caption above!</p>';
-          return;
-        }
+        allPosts = data.posts || [];
 
-        historyDiv.innerHTML = data.posts.map(post => `
-          <div class="post-card">
-            <div class="business">${post.businessDescription}</div>
-            <div class="caption">${post.caption}</div>
-            ${post.sentiment ? `
-              <div class="sentiment-result">
-                <strong>Sentiment:</strong> 👍 ${post.sentiment.positive} · 😐 ${post.sentiment.neutral} · 👎 ${post.sentiment.negative}<br>
-                <em>${post.sentiment.summary}</em><br>
-                <span class="suggestion">💡 ${post.sentiment.suggestion}</span>
-              </div>
-            ` : `
-              <button class="secondary small-btn" onclick="toggleCommentBox('${post.id}')">Analyze Sentiment</button>
-              <div class="comment-box" id="commentBox-${post.id}" style="display:none;">
-                <textarea id="commentInput-${post.id}" placeholder="Paste sample comments here, one per line"></textarea>
-                <button onclick="analyzeSentiment('${post.id}')">Run Analysis</button>
-                <div id="sentimentStatus-${post.id}"></div>
-              </div>
-            `}
-          </div>
-        `).join('');
+        renderCalendar();
+        renderHistory();
       } catch (error) {
         historyDiv.innerHTML = '<p>Could not load history. Is your backend running?</p>';
+      }
+    }
+
+    function renderHistory() {
+      const historyDiv = document.getElementById('history');
+
+      if (allPosts.length === 0) {
+        historyDiv.innerHTML = '<p>No posts yet — generate your first caption above!</p>';
+        return;
+      }
+
+      historyDiv.innerHTML = allPosts.map(post => renderPostCard(post)).join('');
+    }
+
+    function renderCalendar() {
+      const calendarDiv = document.getElementById('calendar');
+      const scheduledPosts = allPosts
+        .filter(p => p.scheduledDate)
+        .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+      if (scheduledPosts.length === 0) {
+        calendarDiv.innerHTML = '<p>No posts scheduled yet. Schedule a post from your History below.</p>';
+        return;
+      }
+
+      calendarDiv.innerHTML = scheduledPosts.map(post => `
+        <div class="post-card calendar-card">
+          <div class="scheduled-date">🗓️ ${new Date(post.scheduledDate).toLocaleString()}</div>
+          <div class="business">${post.businessDescription}</div>
+          <div class="caption">${post.caption}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderPostCard(post) {
+      return `
+        <div class="post-card">
+          <div class="business">${post.businessDescription}</div>
+          <div class="caption">${post.caption}</div>
+
+          <div class="schedule-row">
+            <input type="datetime-local" id="scheduleInput-${post.id}" value="${post.scheduledDate ? toDatetimeLocal(post.scheduledDate) : ''}">
+            <button class="secondary small-btn" onclick="schedulePost('${post.id}')">
+              ${post.scheduledDate ? 'Update Schedule' : 'Schedule Post'}
+            </button>
+          </div>
+
+          ${post.sentiment ? `
+            <div class="sentiment-result">
+              <strong>Sentiment:</strong> 👍 ${post.sentiment.positive} · 😐 ${post.sentiment.neutral} · 👎 ${post.sentiment.negative}<br>
+              <em>${post.sentiment.summary}</em><br>
+              <span class="suggestion">💡 ${post.sentiment.suggestion}</span>
+            </div>
+          ` : `
+            <button class="secondary small-btn" onclick="toggleCommentBox('${post.id}')">Analyze Sentiment</button>
+            <div class="comment-box" id="commentBox-${post.id}" style="display:none;">
+              <textarea id="commentInput-${post.id}" placeholder="Paste sample comments here, one per line"></textarea>
+              <button onclick="analyzeSentiment('${post.id}')">Run Analysis</button>
+              <div id="sentimentStatus-${post.id}"></div>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function toDatetimeLocal(isoString) {
+      const d = new Date(isoString);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    async function schedulePost(postId) {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      const input = document.getElementById(`scheduleInput-${postId}`);
+      if (!input.value) {
+        alert('Please pick a date and time first.');
+        return;
+      }
+
+      const scheduledDate = new Date(input.value).toISOString();
+
+      try {
+        const idToken = await user.getIdToken();
+        await fetch(`http://localhost:3000/posts/${postId}/schedule`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({ scheduledDate })
+        });
+
+        loadHistory();
+      } catch (error) {
+        alert('Error scheduling post.');
       }
     }
 

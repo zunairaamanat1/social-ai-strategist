@@ -165,6 +165,31 @@ app.post('/analyze-sentiment', verifyUser, async (req, res) => {
     res.status(500).json({ error: 'Something went wrong analyzing sentiment' });
   }
 });
+// Set or update the scheduled date/time for a post
+app.patch('/posts/:postId/schedule', verifyUser, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { scheduledDate } = req.body;
+
+    if (!scheduledDate) {
+      return res.status(400).json({ error: 'scheduledDate is required' });
+    }
+
+    const postRef = db.collection('posts').doc(postId);
+    const postDoc = await postRef.get();
+
+    if (!postDoc.exists || postDoc.data().userId !== req.userId) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    await postRef.update({ scheduledDate });
+
+    res.json({ success: true, scheduledDate });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong scheduling the post' });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
