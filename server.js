@@ -58,7 +58,7 @@ app.post('/generate-caption', verifyUser, async (req, res) => {
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+       model: 'openai/gpt-oss-120b',
         messages: [
           {
             role: 'system',
@@ -72,7 +72,7 @@ app.post('/generate-caption', verifyUser, async (req, res) => {
       })
     });
 
-    const data = await response.json();
+   const data = await response.json();
     const caption = data.choices[0].message.content;
 
     const docRef = await db.collection('posts').add({
@@ -123,7 +123,7 @@ app.post('/analyze-sentiment', verifyUser, async (req, res) => {
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+       model: 'openai/gpt-oss-120b',
         messages: [
           {
             role: 'system',
