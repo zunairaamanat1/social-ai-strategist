@@ -75,10 +75,11 @@ app.post('/generate-caption', verifyUser, async (req, res) => {
    const data = await response.json();
     const caption = data.choices[0].message.content;
 
-    const docRef = await db.collection('posts').add({
+   const docRef = await db.collection('posts').add({
       businessDescription,
       caption,
       userId: req.userId,
+      published: false,
       createdAt: FieldValue.serverTimestamp()
     });
 
@@ -188,6 +189,46 @@ app.patch('/posts/:postId/schedule', verifyUser, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong scheduling the post' });
+  }
+});
+// Check for due posts and publish them to Discord (called by Make.com on a schedule)
+app.post('/publish-due-posts', async (req, res) => {
+  try {
+    const now = new Date().toISOString();
+
+    const snapshot = await db.collection('posts')
+      .where('scheduledDate', '<=', now)
+      .where('published', '==', false)
+      .get();
+
+    if (snapshot.empty) {
+      return res.json({ message: 'No due posts found.', published: [] });
+    }
+
+    const publishedPosts = [];
+
+    for (const doc of snapshot.docs) {
+      const post = doc.data();
+
+      // Send to Discord webhook
+      await fetch(process.env.DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: `📱 **New Post Published!**\n\n**Business:** ${post.businessDescription}\n\n${post.caption}`
+        })
+      });
+
+      // Mark as published in Firestore
+      await doc.ref.update({ published: true, publishedAt: FieldValue.serverTimestamp() });
+
+      publishedPosts.push({ id: doc.id, caption: post.caption });
+    }
+
+    res.json({ message: `Published ${publishedPosts.length} post(s).`, published: publishedPosts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong publishing due posts' });
   }
 });
 app.listen(PORT, () => {
