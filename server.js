@@ -4,7 +4,11 @@ require('dotenv').config();
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
-const serviceAccount = require('./serviceAccountKey.json');
+
+// Use environment variable if available (production/Render), otherwise use local file (development)
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+  : require('./serviceAccountKey.json');
 
 initializeApp({
   credential: cert(serviceAccount)
