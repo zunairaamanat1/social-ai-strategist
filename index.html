@@ -135,6 +135,36 @@
       margin-bottom: 6px;
       font-size: 13px;
     }
+        .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .stat-box {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px 10px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .sentiment-summary {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -164,6 +194,10 @@
     <button onclick="generateCaption()">Generate Caption</button>
 
     <div id="result"></div>
+        <h2>📊 Analytics Dashboard</h2>
+    <div id="analytics">Loading analytics...</div>
+
+    <h2>📅 Content Calendar</h2>
 <h2>📅 Content Calendar</h2>
     <div id="calendar">Loading scheduled posts...</div>
 
@@ -236,7 +270,9 @@
         document.getElementById('authBox').style.display = 'none';
         document.getElementById('appBox').style.display = 'block';
         document.getElementById('userEmail').innerText = user.email;
-        window.loadHistory();
+                window.loadHistory();
+        window.loadAnalytics();
+            window.loadAnalytics = loadAnalytics;
       } else {
         document.getElementById('authBox').style.display = 'block';
         document.getElementById('appBox').style.display = 'none';
@@ -449,6 +485,46 @@
         }
       } catch (error) {
         statusDiv.innerText = 'Error connecting to server.';
+      }
+    }
+        async function loadAnalytics() {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      const analyticsDiv = document.getElementById('analytics');
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('http://localhost:3000/analytics', {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        });
+        const data = await response.json();
+
+        analyticsDiv.innerHTML = `
+          <div class="analytics-grid">
+            <div class="stat-box">
+              <div class="stat-number">${data.totalPosts}</div>
+              <div class="stat-label">Total Posts</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${data.totalPublished}</div>
+              <div class="stat-label">Published</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${data.totalScheduled}</div>
+              <div class="stat-label">Scheduled</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">${data.analyzedCount}</div>
+              <div class="stat-label">Analyzed</div>
+            </div>
+          </div>
+          <div class="sentiment-summary">
+            <strong>Overall Sentiment:</strong><br>
+            👍 ${data.sentimentTotals.positive} Positive · 😐 ${data.sentimentTotals.neutral} Neutral · 👎 ${data.sentimentTotals.negative} Negative
+          </div>
+        `;
+      } catch (error) {
+        analyticsDiv.innerHTML = '<p>Could not load analytics.</p>';
       }
     }
 

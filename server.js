@@ -245,6 +245,43 @@ app.post('/publish-due-posts', async (req, res) => {
   }
 
 });
+// Get analytics summary for the logged-in user
+app.get('/analytics', verifyUser, async (req, res) => {
+  try {
+    const snapshot = await db.collection('posts')
+      .where('userId', '==', req.userId)
+      .get();
+
+    const posts = snapshot.docs.map(doc => doc.data());
+
+    const totalPosts = posts.length;
+    const totalPublished = posts.filter(p => p.published === true).length;
+    const totalScheduled = posts.filter(p => p.scheduledDate && !p.published).length;
+
+    const sentimentTotals = { positive: 0, neutral: 0, negative: 0 };
+    let analyzedCount = 0;
+
+    posts.forEach(p => {
+      if (p.sentiment) {
+        sentimentTotals.positive += p.sentiment.positive || 0;
+        sentimentTotals.neutral += p.sentiment.neutral || 0;
+        sentimentTotals.negative += p.sentiment.negative || 0;
+        analyzedCount++;
+      }
+    });
+
+    res.json({
+      totalPosts,
+      totalPublished,
+      totalScheduled,
+      analyzedCount,
+      sentimentTotals
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong fetching analytics' });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
