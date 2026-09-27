@@ -57,11 +57,15 @@ app.get('/debug-env', (req, res) => {
 // Generate a caption AND save it, tagged to the logged-in user
 app.post('/generate-caption', verifyUser, async (req, res) => {
   try {
-    const { businessDescription } = req.body;
+    const { businessDescription, tone } = req.body;
 
     if (!businessDescription) {
       return res.status(400).json({ error: 'businessDescription is required' });
     }
+
+    const toneInstruction = tone
+      ? `Write in a ${tone} tone.`
+      : 'Write in a friendly, engaging tone.';
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -74,7 +78,7 @@ app.post('/generate-caption', verifyUser, async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a social media expert. Generate a short, engaging Instagram caption with 3-5 relevant hashtags for the given business.'
+            content: `You are a social media expert. Generate a short, engaging Instagram caption with 3-5 relevant hashtags for the given business. ${toneInstruction}`
           },
           {
             role: 'user',
@@ -90,6 +94,7 @@ app.post('/generate-caption', verifyUser, async (req, res) => {
     const docRef = await db.collection('posts').add({
       businessDescription,
       caption,
+      tone: tone || 'friendly',
       userId: req.userId,
       published: false,
       createdAt: FieldValue.serverTimestamp()
@@ -101,7 +106,6 @@ app.post('/generate-caption', verifyUser, async (req, res) => {
     res.status(500).json({ error: 'Something went wrong generating the caption' });
   }
 });
-
 // Get only the logged-in user's posts
 app.get('/posts', verifyUser, async (req, res) => {
   try {

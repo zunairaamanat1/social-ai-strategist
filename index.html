@@ -4,75 +4,98 @@
   <meta charset="UTF-8">
   <title>Social AI Strategist</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 50px auto;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      max-width: 640px;
+      margin: 40px auto;
       padding: 20px;
-      background: #f5f5f5;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+      color: #2d2d2d;
     }
-    h1 { color: #333; }
+    h1 {
+      color: #2d3436;
+      font-size: 26px;
+      margin-bottom: 4px;
+    }
     h2 {
-      color: #333;
+      color: #2d3436;
       margin-top: 40px;
-      font-size: 18px;
-      border-bottom: 2px solid #ddd;
+      font-size: 17px;
+      border-bottom: 2px solid #4CAF50;
       padding-bottom: 8px;
+      display: inline-block;
     }
-    input, textarea {
+    input, textarea, select {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       font-size: 14px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+      border-radius: 10px;
+      border: 1px solid #d5dae0;
       box-sizing: border-box;
       margin-top: 6px;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #4CAF50;
     }
     textarea { height: 80px; }
+    .tone-label {
+      display: block;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #555;
+      font-weight: 600;
+    }
     button {
-      margin-top: 10px;
-      padding: 10px 20px;
+      margin-top: 12px;
+      padding: 11px 22px;
       background: #4CAF50;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 10px;
       cursor: pointer;
       font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.1s;
     }
-    button:hover { background: #45a049; }
-    button.secondary {
-      background: #888;
-    }
-    button.secondary:hover { background: #666; }
+    button:hover { background: #43a047; transform: translateY(-1px); }
+    button.secondary { background: #78828c; }
+    button.secondary:hover { background: #636d76; }
     #result {
       margin-top: 20px;
-      padding: 15px;
+      padding: 16px;
       background: white;
-      border-radius: 8px;
-      border: 1px solid #ddd;
+      border-radius: 12px;
+      border: 1px solid #e0e4e8;
       white-space: pre-wrap;
       min-height: 40px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
     #loading { color: #888; font-style: italic; }
     .post-card {
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 12px;
+      border: 1px solid #e0e4e8;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
     .post-card .business {
       font-size: 12px;
       color: #888;
       margin-bottom: 6px;
+      text-transform: capitalize;
     }
-    .post-card .caption { white-space: pre-wrap; }
+    .post-card .caption { white-space: pre-wrap; line-height: 1.5; }
 
     #authBox {
       background: white;
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
+      padding: 28px;
+      border-radius: 14px;
+      border: 1px solid #e0e4e8;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
     }
     #appBox { display: none; }
     #userBar {
@@ -94,48 +117,39 @@
       cursor: pointer;
       margin-top: 12px;
       display: inline-block;
+      font-weight: 600;
     }
     .small-btn {
       font-size: 12px;
-      padding: 6px 12px;
+      padding: 7px 14px;
       margin-top: 10px;
     }
-    .comment-box {
-      margin-top: 10px;
-    }
-    .comment-box textarea {
-      height: 60px;
-    }
+    .comment-box { margin-top: 10px; }
+    .comment-box textarea { height: 60px; }
     .sentiment-result {
       margin-top: 12px;
-      padding: 10px;
+      padding: 12px;
       background: #f0f8f0;
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 13px;
+      border-left: 3px solid #4CAF50;
     }
-    .suggestion {
-      color: #555;
-    }
+    .suggestion { color: #555; }
     .schedule-row {
       display: flex;
       gap: 8px;
       align-items: center;
       margin-top: 10px;
     }
-    .schedule-row input {
-      margin-top: 0;
-      flex: 1;
-    }
-    .calendar-card {
-      border-left: 4px solid #4CAF50;
-    }
+    .schedule-row input { margin-top: 0; flex: 1; }
+    .calendar-card { border-left: 4px solid #4CAF50; }
     .scheduled-date {
       font-weight: bold;
       color: #4CAF50;
       margin-bottom: 6px;
       font-size: 13px;
     }
-        .analytics-grid {
+    .analytics-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 10px;
@@ -143,27 +157,31 @@
     }
     .stat-box {
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 15px 10px;
+      border: 1px solid #e0e4e8;
+      border-radius: 12px;
+      padding: 16px 10px;
       text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
     .stat-number {
-      font-size: 24px;
-      font-weight: bold;
+      font-size: 26px;
+      font-weight: 700;
       color: #4CAF50;
     }
     .stat-label {
       font-size: 11px;
       color: #888;
       margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
     .sentiment-summary {
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 12px;
+      border: 1px solid #e0e4e8;
+      border-radius: 12px;
+      padding: 14px;
       font-size: 13px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
   </style>
 </head>
@@ -190,15 +208,24 @@
 
     <p>Describe your business and get an AI-generated Instagram caption:</p>
     <textarea id="businessInput" placeholder="e.g. A small home bakery in Lahore that sells custom birthday cakes"></textarea>
+
+    <label class="tone-label">Brand Voice:</label>
+    <select id="toneSelect">
+      <option value="friendly">Friendly & Warm</option>
+      <option value="professional">Professional</option>
+      <option value="fun and playful">Fun & Playful</option>
+      <option value="luxurious and elegant">Luxurious & Elegant</option>
+      <option value="bold and confident">Bold & Confident</option>
+    </select>
     <br>
     <button onclick="generateCaption()">Generate Caption</button>
 
     <div id="result"></div>
-        <h2>📊 Analytics Dashboard</h2>
+
+    <h2>📊 Analytics Dashboard</h2>
     <div id="analytics">Loading analytics...</div>
 
     <h2>📅 Content Calendar</h2>
-<h2>📅 Content Calendar</h2>
     <div id="calendar">Loading scheduled posts...</div>
 
     <h2>📜 History</h2>
@@ -270,9 +297,8 @@
         document.getElementById('authBox').style.display = 'none';
         document.getElementById('appBox').style.display = 'block';
         document.getElementById('userEmail').innerText = user.email;
-                window.loadHistory();
+        window.loadHistory();
         window.loadAnalytics();
-            window.loadAnalytics = loadAnalytics;
       } else {
         document.getElementById('authBox').style.display = 'block';
         document.getElementById('appBox').style.display = 'none';
@@ -290,6 +316,7 @@
       if (!user) return;
 
       const input = document.getElementById('businessInput').value;
+      const tone = document.getElementById('toneSelect').value;
       const resultDiv = document.getElementById('result');
 
       if (!input.trim()) {
@@ -307,7 +334,7 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${idToken}`
           },
-          body: JSON.stringify({ businessDescription: input })
+          body: JSON.stringify({ businessDescription: input, tone: tone })
         });
 
         const data = await response.json();
@@ -315,6 +342,7 @@
         if (data.caption) {
           resultDiv.innerText = data.caption;
           loadHistory();
+          loadAnalytics();
         } else {
           resultDiv.innerText = 'Error: ' + (data.error || 'Something went wrong.');
         }
@@ -323,7 +351,7 @@
       }
     }
 
-   let allPosts = [];
+    let allPosts = [];
 
     async function loadHistory() {
       const user = getCurrentUser();
@@ -487,7 +515,8 @@
         statusDiv.innerText = 'Error connecting to server.';
       }
     }
-        async function loadAnalytics() {
+
+    async function loadAnalytics() {
       const user = getCurrentUser();
       if (!user) return;
 
@@ -529,6 +558,7 @@
     }
 
     window.loadHistory = loadHistory;
+    window.loadAnalytics = loadAnalytics;
   </script>
 
 </body>
